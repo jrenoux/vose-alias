@@ -1,0 +1,11 @@
+[package]
+name = "alias-sample"
+version = "0.1.0"
+authors = ["Jennifer Renoux <jennifer.renoux@oru.se>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+float-cmp = "*"
+rand = "*"
