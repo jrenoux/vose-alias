@@ -1,6 +1,6 @@
 [package]
-name = "alias-sample"
-version = "0.1.0"
+name = "vose-alias"
+version = "1.0.0"
 authors = ["Jennifer Renoux <jennifer.renoux@oru.se>"]
 edition = "2018"
 
