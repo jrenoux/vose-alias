@@ -62,43 +62,19 @@ impl<T: Display + Copy + Hash + PartialEq + Eq + Debug> VoseAlias<T> {
 
 
 	// emptying one column first
-        while !(small.is_empty() || large.is_empty()) {
-	    // DEBUG - print small and large
-	    // println!("-----------------------------------------------");
-	    // println!("{:?}, {:?}", !small.is_empty(), !large.is_empty());
-            // println!("Small");
-            // for s in &small {
-	    // 	println!("{}", s);
-            // }
-
-            // println!("Large");
-            // for l in &large {
-	    // 	println!("{}", l);
-            // }
-
-	    
-	    
+        while !(small.is_empty() || large.is_empty()) {    
 	    // removing the element from small and large
             if let (Some(l), Some(g)) = (small.pop(), large.pop()) {
-		// DEBUG -
-		// println!("l = {}, g = {}", l, g);
-		
 		// put g in the alias vector
 		alias.insert(l, g);
 		// getting the probability of the small element
 		if let Some(p_l) = scaled_probability_vector.get(&l) {
-		    // DEBUG
-		    // println!("p_l = {}", p_l);
-		    
 		    // put it in the prob vector
 		    prob.insert(l, *p_l);
 
 		    // update the probability for g
 		    if let Some(p_g) = scaled_probability_vector.get(&g) { 
 			let new_p_g = (*p_g + *p_l) - 1.0;
-			// DEBUG -
-			// println!("p_g = {}, new_p_g = {}", *p_g, new_p_g);
-			
 			// update scaled_probability_vector
 			scaled_probability_vector.insert(g, new_p_g);
 			if new_p_g < 1.0 {
@@ -127,22 +103,6 @@ impl<T: Display + Copy + Hash + PartialEq + Eq + Debug> VoseAlias<T> {
 		prob.insert(l, 1.0);
 	    }
 	}
-
-
-	// println!("-----------------------------------------------");
-	// println!("At the end of the init... Probability vector: ");
-	// for key in prob.keys() {
-	//     if let Some(value) = prob.get(key) {
-	// 	println!("Prob({}) = {}", key, *value);
-	// 	if let Some(alias_value) = alias.get(key) {
-	// 	    println!("Alias({}) = {}", key, alias_value);
-	// 	}
-	//     }
-	// }
-
-	// println!("{:?}", prob);
-
-	        
 
         VoseAlias {
 	    elements: element_vector,
