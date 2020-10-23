@@ -171,7 +171,7 @@ impl<T: Copy + Hash + Eq + Debug> VoseAlias<T> {
     /// use vose_alias::VoseAlias;
     ///
     /// // Samples an integer from a list and prints it. 
-    /// let va = VoseAlias::new(vec![1, 2, 3, 4];, vec![0.5, 0.2, 0.2, 0.1]);
+    /// let va = VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.1]);
     /// let element = va.sample();
     /// println!("{}", element);
     /// 
