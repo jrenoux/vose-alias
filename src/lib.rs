@@ -1,12 +1,36 @@
+//! This module is an implementation of the Vose-Alias method, to sample an element from a list, given a  discrete probability distribution.
+//!
+//! This module contains function to create the Probability and Alias tables and sample from them. 
+//!
+//! The algorithm implemented follows the explanation given on [this page](https://www.keithschwarz.com/darts-dice-coins/)
+//!
+
+
+
 use std::hash::Hash;
 use std::fmt::Debug;
-use std::fmt::Display;
 use float_cmp::*;
 use std::collections::HashMap;
 
 use rand::seq::SliceRandom;
 use rand::Rng;
 
+
+
+/// A structure containing the necessary Vose-Alias tables. 
+///
+/// The structure contains the following attributes:
+/// 1. A vector containing the elements to sample frmo
+/// 2. The Alias table, created from the Vose-Alias initialization step
+/// 3. The Probability table, created frmo the Vose-Alias initialization step
+///
+/// The structure is created by the function `vose_alias::new()`. See its documentation for more details.
+///
+/// Internally, the elements are used as indexes in `HashMap` and `Vec`. Therefore, the type `T` must implement the following traits:
+/// - Copy
+/// - Hash
+/// - Eq
+/// - Debug
 #[derive(Debug)]
 pub struct VoseAlias <T>{
     pub elements:Vec<T>,
@@ -16,8 +40,29 @@ pub struct VoseAlias <T>{
     
 }
 
-impl<T: Display + Copy + Hash + PartialEq + Eq + Debug> VoseAlias<T> {
 
+impl<T: Copy + Hash + Eq + Debug> VoseAlias<T> {
+
+    /// Returns the Vose-Alias object containing the element vector as well as the alias and probability tables.
+    ///
+    /// The `element_vector` contains the list of elements that should be sampled from.
+    /// The `probability_vector` contains the discrete probability distribution to be sampled with.
+    /// `element_vector` and `probability_vector` should have the same size and `probability_vector` should describe a well-formed probability distribution.
+    ///
+    /// # Panics
+    ///
+    /// The function panics in two casese:
+    /// 1. the `element_vector` and the `probability_vector` do not contain the same number of elements
+    /// 2. the sum of the elements in `probability_vector` is not equal to 1 (with a floating number precision of 0.0001), meaning that `probability_vector` does not describe a well formed probability distribution
+    ///
+    /// # Examples
+    /// ```
+    /// use vose_alias::VoseAlias;
+    /// 
+    /// // Creates a Vose-Alias object from a list of Integer elements
+    /// let va = VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.1]);
+    /// ```
+    
     pub fn new(element_vector:Vec<T>, probability_vector:Vec<f32>) -> VoseAlias<T> {
         let size_p = probability_vector.len();
         let size_e = element_vector.len();
@@ -59,7 +104,6 @@ impl<T: Display + Copy + Hash + PartialEq + Eq + Debug> VoseAlias<T> {
                 large.push(e);
             }
         }
-
 
 	// emptying one column first
         while !(small.is_empty() || large.is_empty()) {    
@@ -112,21 +156,53 @@ impl<T: Display + Copy + Hash + PartialEq + Eq + Debug> VoseAlias<T> {
         }
     }
 
-    pub fn sample(&self) -> Option<T> {
+
+    
+    /// Returns a sampled element from a previously created Vose-Alias object.
+    ///
+    /// This function uses a `VoseAlias` object previously created using the method `vose_alias::new()` to sample in linear time an element of type `T`.
+    ///
+    /// # Panics
+    /// This function panics only if the lists created in `vose_alias::new()` are not correctly form, which would indicate a internal bug in the code.
+    /// If your code panics while using this function, please fill in an issue report.
+    ///
+    /// # Examples
+    /// ```
+    /// use vose_alias::VoseAlias;
+    ///
+    /// // Samples an integer from a list and prints it. 
+    /// let va = VoseAlias::new(vec![1, 2, 3, 4];, vec![0.5, 0.2, 0.2, 0.1]);
+    /// let element = va.sample();
+    /// println!("{}", element);
+    /// 
+    /// ```
+    pub fn sample(&self) -> T {
 	// choose randomly an element from the element vector
-	let i = self.elements.choose(&mut rand::thread_rng())?;
-	let p_i = self.prob.get(&i)?;
+	let i:T;
+	let p_i:f32;
+	match self.elements.choose(&mut rand::thread_rng()) {
+	    Some(e) => i = *e,
+	    None => panic!("Internal error. The element vector is empty. If this happened, please fill in an issue report."),
+	}
+
+	match self.prob.get(&i) {
+	    Some(p) => p_i = *p,
+	    None => panic!("Internal error. The probability vector is empty. If this happened, please fill in an issue report."),
+	}
 	let num = rand::thread_rng().gen_range(0, 101);
-	if (num as f32) < (*p_i * 100.0) {
-	    return Some(*i);
+	if (num as f32) < (p_i * 100.0) {
+	    return i;
 	}
 	else {
-	    let alias_i = self.alias.get(i)?;
-	    return Some(*alias_i);
+	    match self.alias.get(&i) {
+		Some(alias_i) => return *alias_i,
+		None => panic!("Internal error. No alias found for element {:?}. If this happened, please fill in an issue report.", i),
+	    }
 	};
     }
-
 }
+
+
 
 #[cfg(test)]
 mod tests{
@@ -152,5 +228,13 @@ mod tests{
     #[should_panic]
     fn sum_not_ok() {
         VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.]);
+    }
+
+    #[test]
+    fn test_sample() {
+	let element_vector = vec![1, 2, 3, 4];
+	let va = VoseAlias::new(element_vector.clone(), vec![0.5, 0.2, 0.2, 0.1]);
+	let element = va.sample();
+	assert!(element_vector.contains(&element));
     }
 }
