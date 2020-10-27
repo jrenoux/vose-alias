@@ -1,4 +1,4 @@
-//! This module is an implementation of the Vose-Alias method, to sample an element from a list, given a  discrete probability distribution.
+//! This module is an implementation of the Vose-Alias method, to sample an element from a list, given a discrete probability distribution.
 //!
 //! This module contains function to create the Probability and Alias tables and sample from them. 
 //!
@@ -50,7 +50,7 @@ where T: Display + Copy + Hash + Eq + Debug {
     /// Returns the Vose-Alias object containing the element vector as well as the alias and probability tables.
     ///
     /// The `element_vector` contains the list of elements that should be sampled from.
-    /// The `probability_vector` contains the discrete probability distribution to be sampled with.
+    /// The `probability_vector` contains the probability distribution to be sampled with.
     /// `element_vector` and `probability_vector` should have the same size and `probability_vector` should describe a well-formed probability distribution.
     ///
     /// # Panics
