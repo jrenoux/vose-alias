@@ -6,7 +6,8 @@
 //!
 
 
-
+use std::fmt;
+use std::fmt::Display;
 use std::hash::Hash;
 use std::fmt::Debug;
 use float_cmp::*;
@@ -16,7 +17,9 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 
 
-
+/////////////////////////////////////////////
+// Structure Definition and Implementation //
+/////////////////////////////////////////////
 /// A structure containing the necessary Vose-Alias tables. 
 ///
 /// The structure contains the following attributes:
@@ -31,8 +34,8 @@ use rand::Rng;
 /// - Hash
 /// - Eq
 /// - Debug
-#[derive(Debug)]
-pub struct VoseAlias <T>{
+#[derive(Debug, Clone)]
+pub struct VoseAlias <T> where T: Display + Copy + Hash + Eq + Debug{
     pub elements:Vec<T>,
     pub alias:HashMap<T, T>,
     pub prob:HashMap<T, f32>,
@@ -41,7 +44,8 @@ pub struct VoseAlias <T>{
 }
 
 
-impl<T: Copy + Hash + Eq + Debug> VoseAlias<T> {
+impl<T> VoseAlias<T>
+where T: Display + Copy + Hash + Eq + Debug {
 
     /// Returns the Vose-Alias object containing the element vector as well as the alias and probability tables.
     ///
@@ -177,39 +181,122 @@ impl<T: Copy + Hash + Eq + Debug> VoseAlias<T> {
     /// 
     /// ```
     pub fn sample(&self) -> T {
-	// choose randomly an element from the element vector
+	let (i, num) = self.roll_die_and_flip_coin();
+	return self.select_element(i, num);
+    }
+
+
+    /// This function rolls the die and flip the coin to select the right element using `rand` usual RNG. It returns the generated number. This function is used by the `sample` function and has been decoupled from the `sample` function to allow unit tests on the `sample` function, using pre-determined series of numbers. 
+    fn roll_die_and_flip_coin(&self) -> (T, u16) {
 	let i:T;
-	let p_i:f32;
 	match self.elements.choose(&mut rand::thread_rng()) {
 	    Some(e) => i = *e,
 	    None => panic!("Internal error. The element vector is empty. If this happened, please fill in an issue report."),
 	}
+	let num = rand::thread_rng().gen_range(0, 101);
 
-	match self.prob.get(&i) {
+	return (i, num);
+	
+    }
+
+
+    /// This function selects an element from the VoseAlias table given a die (a column) and a coin (the element or its alias). This function has been separated from the `sample` function to allow unit testing, but should never be called by itself. 
+    fn select_element(&self, die:T, coin:u16) -> T {
+	// choose randomly an element from the element vector
+	let p_i:f32;
+	match self.prob.get(&die) {
 	    Some(p) => p_i = *p,
 	    None => panic!("Internal error. The probability vector is empty. If this happened, please fill in an issue report."),
 	}
-	let num = rand::thread_rng().gen_range(0, 101);
-	if (num as f32) < (p_i * 100.0) {
-	    return i;
+	if (coin as f32) <= (p_i * 100.0) {
+	    return die;
 	}
 	else {
-	    match self.alias.get(&i) {
+	    match self.alias.get(&die) {
 		Some(alias_i) => return *alias_i,
-		None => panic!("Internal error. No alias found for element {:?}. If this happened, please fill in an issue report.", i),
+		None => panic!("Internal error. No alias found for element {:?}. If this happened, please fill in an issue report.", die),
 	    }
 	};
     }
+    
+}
+
+
+////////////////////////////
+// Traits Implementation  //
+////////////////////////////
+impl <T> Display for VoseAlias<T>
+where T: Display + Copy + Hash + Eq + Debug {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+	// format the elements
+	let mut str_elements = String::from("[ ");
+	for e in &self.elements {
+	    str_elements = str_elements + &e.to_string() + " ";
+	}
+	str_elements = str_elements + "]";
+
+	// format the alias table
+	let mut str_alias = String::from("{ ");
+	for k in self.alias.keys() {
+	    let a:T;
+	    match self.alias.get(&k) {
+		Some(element) => a = *element,
+		None => panic!("Internal error. The alias map does not contain element for {}. If you encountered this error, please fill in an issue report.", k),
+	    }
+	    str_alias = str_alias + &String::from(format!("{}:{}, ", k, a));
+	}
+	// remove the last two characters, that are not needed for the last element
+	str_alias = str_alias[..str_alias.len() - 2].to_string() + " }";
+
+	// fomat the probability table
+	let mut str_prob = String::from("{");
+	for k in self.prob.keys() {
+	    let p:f32;
+	    match self.prob.get(&k) {
+		Some(element) => p = *element,
+		None => panic!("Internal error. The alias map does not contain element for {}. If you encountered this error, please fill in an issue report.", k),
+	    }
+	    str_prob = str_prob + &String::from(format!("{}:{:.2}, ", k, p));
+	}
+	// remove the last two characters, that are not needed for the last element
+	str_prob = str_prob[..str_prob.len() - 2].to_string() + " }";
+
+	// return all of this in a nice string
+	write!(f, "{{ elements: {}, alias: {}, prob: {}}}", str_elements, str_alias, str_prob)
+    }
+}
+
+impl<T> PartialEq for VoseAlias<T>
+where T:Display + Copy + Hash + Eq + Debug {
+    fn eq(&self, other: &Self) -> bool {
+	self.alias == other.alias
+    }
+    
+}
+
+
+impl <T> Eq for VoseAlias<T>
+where T:Display + Copy + Hash + Eq + Debug{
 }
 
 
 
+
+
+
+
+///////////
+// Tests //
+///////////
 #[cfg(test)]
 mod tests{
     use super::*;
-    
+
+    ////////////////////////////////////////
+    // Tests of the Struct Implementation //
+    ////////////////////////////////////////
     #[test]
-    fn size_ok() {
+    fn construction_ok() {
         VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.1]);
     }
 
@@ -220,21 +307,130 @@ mod tests{
     }
 
     #[test]
-    fn sum_ok() {
-        VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.1]);
-    }
-
-    #[test]
     #[should_panic]
     fn sum_not_ok() {
         VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.]);
     }
 
     #[test]
-    fn test_sample() {
+    #[should_panic]
+    fn new_empty_vectors() {
+	let element_vector:Vec<u16> = Vec::new();
+	let probability_vector:Vec<f32> = Vec::new();
+	VoseAlias::new(element_vector, probability_vector);
+    }
+    
+    #[test]
+    fn test_roll_die_flip_coin() {
 	let element_vector = vec![1, 2, 3, 4];
 	let va = VoseAlias::new(element_vector.clone(), vec![0.5, 0.2, 0.2, 0.1]);
-	let element = va.sample();
-	assert!(element_vector.contains(&element));
+	let (die, coin) = va.roll_die_and_flip_coin();
+	assert!(element_vector.contains(&die));
+	assert!(coin <= 100);
     }
+
+    #[test]
+    fn test_select_element_ok() {
+	let va = VoseAlias::new(vec!["orange", "yellow", "green", "turquoise", "grey", "blue", "pink"], vec![0.125, 0.2, 0.1, 0.25, 0.1, 0.1, 0.125]);
+	// column orange / alias yellow
+	let element = va.select_element("orange", 0);
+	assert!(element == "orange");
+	let element = va.select_element("orange", 87);
+	assert!(element == "orange");
+	let element = va.select_element("orange", 88);
+	assert!(element == "yellow");
+	let element = va.select_element("orange", 100);
+	assert!(element == "yellow");
+
+	// column yellow / no alias
+	let element = va.select_element("yellow", 0);
+	assert!(element == "yellow");
+	let element = va.select_element("yellow", 100);
+	assert!(element == "yellow");
+
+	// column green / alias turquoise
+	let element = va.select_element("green", 0);
+	assert!(element == "green");
+	let element = va.select_element("green", 70);
+	assert!(element == "green");
+	let element = va.select_element("green", 71);
+	assert!(element == "turquoise");
+	let element = va.select_element("green", 100);
+	assert!(element == "turquoise");
+
+	// column turquoise / alias yellow
+	let element = va.select_element("turquoise", 0);
+	assert!(element == "turquoise");
+	let element = va.select_element("turquoise", 72);
+	assert!(element == "turquoise");
+	let element = va.select_element("turquoise", 73);
+	assert!(element == "yellow");
+	let element = va.select_element("turquoise", 100);
+	assert!(element == "yellow");
+
+	// column grey / alias turquoise
+	let element = va.select_element("grey", 0);
+	assert!(element == "grey");
+	let element = va.select_element("grey", 70);
+	assert!(element == "grey");
+	let element = va.select_element("grey", 71);
+	assert!(element == "turquoise");
+	let element = va.select_element("grey", 100);
+	assert!(element == "turquoise");
+
+	// column blue / alias turquoise
+	let element = va.select_element("blue", 0);
+	assert!(element == "blue");
+	let element = va.select_element("blue", 70);
+	assert!(element == "blue");
+	let element = va.select_element("blue", 71);
+	assert!(element == "turquoise");
+	let element = va.select_element("blue", 100);
+	assert!(element == "turquoise");
+
+	// column pink / alias turquoise
+	let element = va.select_element("pink", 0);
+	assert!(element == "pink");
+	let element = va.select_element("pink", 87);
+	assert!(element == "pink");
+	let element = va.select_element("pink", 88);
+	assert!(element == "turquoise");
+	let element = va.select_element("pink", 100);
+	assert!(element == "turquoise");
+    }
+
+
+    #[test]
+    #[should_panic]
+    fn select_element_proba_too_high() {
+	let va = VoseAlias::new(vec!["orange", "yellow", "green", "turquoise", "grey", "blue", "pink"], vec![0.125, 0.2, 0.1, 0.25, 0.1, 0.1, 0.125]);
+	va.select_element("yellow", 101);
+    }
+
+    #[test]
+    #[should_panic]
+    fn select_element_not_in_list() {
+	let va = VoseAlias::new(vec!["orange", "yellow", "green", "turquoise", "grey", "blue", "pink"], vec![0.125, 0.2, 0.1, 0.25, 0.1, 0.1, 0.125]);
+	va.select_element("red", 100);
+    }
+
+
+
+    ///////////////////////////////////////
+    // Tests of the trait implementation //
+    ///////////////////////////////////////
+    #[test]
+    fn test_trait_equal() {
+	let va = VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.1]);
+	let va2 = VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.1]);
+	assert!(va==va2);
+    }
+
+    #[test]
+    fn test_trait_not_equali() {
+	let va = VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.0, 0.3]);
+	let va2 = VoseAlias::new(vec![1, 2, 3, 4], vec![0.5, 0.2, 0.2, 0.1]);
+	assert!(va!=va2);
+    }
+    
 }
