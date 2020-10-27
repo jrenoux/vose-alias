@@ -14,5 +14,5 @@ categories = ["algorithms", "mathematics"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-float-cmp = "*"
-rand = "*"
+float-cmp = "0.8.0"
+rand = "0.7.3"
