@@ -8,7 +8,7 @@ license-file = "LICENSE"
 homepage = "https://github.com/jrenoux/vose-alias"
 repository = "https://github.com/jrenoux/vose-alias"
 readme = "README.md"
-keywords = ["vose-alias", "sampling", "discrete probability distribution", "alias method"]
+keywords = ["vose-alias", "sampling", "alias-method"]
 categories = ["algorithms", "mathematics"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
